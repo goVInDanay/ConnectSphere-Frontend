@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Hash, Users, FileText, TrendingUp, X } from 'lucide-react';
+import { Search, Hash, Users, FileText, TrendingUp, X, UserPlus, UserCheck, Compass } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { WideLayout } from '../components/layout/AppLayout';
 import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
 import { PostCard } from '../components/posts/PostCard';
-import { PostSkeleton, UserCardSkeleton } from '../components/ui/Skeleton';
+import { PostSkeleton } from '../components/ui/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { searchApi, followsApi } from '../api';
+import { searchApi, followsApi, authApi } from '../api';
 import type { Post, User, Hashtag } from '../types';
 import { formatCount, cn } from '../utils';
 
@@ -20,27 +20,141 @@ interface SearchResults {
   hashtags: Hashtag[];
 }
 
+// ── Suggested User Card ───────────────────────────────────────────────────────
+function SuggestedUserCard({
+  user,
+  isFollowing,
+  onFollow,
+}: {
+  user: User;
+  isFollowing: boolean;
+  onFollow: (u: User) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-hover/50 hover:bg-surface-hover border border-border/40 hover:border-border transition-all group">
+      <Link to={`/profile/${user.userId}`} className="shrink-0">
+        <Avatar src={user.profilePicUrl} name={user.fullName || user.username} size="md" ring />
+      </Link>
+      <div className="flex-1 min-w-0">
+        <Link to={`/profile/${user.userId}`} className="block">
+          <p className="text-sm font-semibold text-foreground truncate group-hover:text-brand-400 transition-colors">
+            {user.fullName || user.username}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+        </Link>
+        {user.bio && (
+          <p className="text-xs text-muted-foreground/70 truncate mt-0.5">{user.bio}</p>
+        )}
+      </div>
+      <button
+        onClick={() => onFollow(user)}
+        className={cn(
+          'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all',
+          isFollowing
+            ? 'bg-surface-hover text-muted-foreground border border-border hover:border-destructive/30 hover:text-destructive'
+            : 'bg-brand-500 text-white hover:bg-brand-600 shadow-sm'
+        )}
+      >
+        {isFollowing
+          ? <><UserCheck className="w-3.5 h-3.5" /> Following</>
+          : <><UserPlus  className="w-3.5 h-3.5" /> Follow</>
+        }
+      </button>
+    </div>
+  );
+}
+
+// ── Hashtag Pill ──────────────────────────────────────────────────────────────
+function HashtagPill({ tag, count, onClick }: { tag: string; count: number; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center justify-between w-full p-3 rounded-xl bg-surface-hover/40 hover:bg-surface-hover border border-border/40 hover:border-brand-500/30 transition-all group"
+    >
+      <div className="flex items-center gap-2.5">
+        <span className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-400 flex items-center justify-center text-sm font-bold">
+          #
+        </span>
+        <div className="text-left">
+          <p className="text-sm font-semibold text-foreground group-hover:text-brand-400 transition-colors">
+            #{tag}
+          </p>
+          <p className="text-xs text-muted-foreground">{formatCount(count)} posts</p>
+        </div>
+      </div>
+      <TrendingUp className="w-4 h-4 text-muted-foreground/40 group-hover:text-brand-400/60 transition-colors" />
+    </button>
+  );
+}
+
+// ── ExplorePage ───────────────────────────────────────────────────────────────
 export default function ExplorePage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const inputRef  = useRef<HTMLInputElement>(null);
+  const debounce  = useRef<ReturnType<typeof setTimeout>>();
 
-  const [query, setQuery] = useState('');
-  const [tab, setTab] = useState<SearchTab>('all');
-  const [results, setResults] = useState<SearchResults | null>(null);
-  const [trending, setTrending] = useState<Hashtag[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [query,          setQuery]          = useState('');
+  const [tab,            setTab]            = useState<SearchTab>('all');
+  const [results,        setResults]        = useState<SearchResults | null>(null);
+  const [trending,       setTrending]       = useState<Hashtag[]>([]);
+  const [loading,        setLoading]        = useState(false);
   const [loadingTrending, setLoadingTrending] = useState(true);
-  const [followedUsers, setFollowedUsers] = useState<Set<number>>(new Set());
+  const [followedUsers,  setFollowedUsers]  = useState<Set<number>>(new Set());
 
+  const [suggestedUsers,   setSuggestedUsers]   = useState<User[]>([]);
+  const [loadingSuggested, setLoadingSuggested] = useState(false);
+
+  // ── 1. Always seed followee IDs independently on mount ───────────────────
+  // This runs regardless of whether the suggested-users call succeeds, so the
+  // Follow/Following button state is always correct.
   useEffect(() => {
-    searchApi.getTrendingHashtags(10)
+    if (!user) return;
+    followsApi.getFolloweeIds()
+      .then((ids) => setFollowedUsers(new Set(ids)))
+      .catch(() => {
+        // Fallback: derive from the following list
+        followsApi.getFollowing(user.userId)
+          .then((follows) => setFollowedUsers(new Set(follows.map((f) => f.followeeId))))
+          .catch(() => {});
+      });
+  }, [user]);
+
+  // ── 2. Load trending hashtags on mount ────────────────────────────────────
+  useEffect(() => {
+    searchApi
+      .getTrendingHashtags(10)
       .then(setTrending)
       .catch(() => {})
       .finally(() => setLoadingTrending(false));
   }, []);
 
+  // ── 3. Load suggested users when authenticated ────────────────────────────
+  useEffect(() => {
+    if (user) loadSuggestedUsers();
+  }, [user]);
+
+  const loadSuggestedUsers = async () => {
+    setLoadingSuggested(true);
+    try {
+      const ids = await followsApi.getSuggestedUsers();
+      const settled = await Promise.allSettled(
+        ids.slice(0, 8).map((id) => authApi.getProfile(id))
+      );
+      setSuggestedUsers(
+        settled
+          .filter((r): r is PromiseFulfilledResult<User> => r.status === 'fulfilled')
+          .map((r) => r.value)
+      );
+    } catch {
+      // suggested endpoint may not exist yet — silently hide the section
+      setSuggestedUsers([]);
+    } finally {
+      setLoadingSuggested(false);
+    }
+  };
+
+  // ── Search ────────────────────────────────────────────────────────────────
   const doSearch = useCallback(async (q: string) => {
     if (!q.trim()) { setResults(null); return; }
     setLoading(true);
@@ -57,75 +171,99 @@ export default function ExplorePage() {
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doSearch(val), 400);
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => doSearch(val), 400);
   };
 
-  const handleFollow = async (targetId: number, username: string) => {
-    if (!user) return;
+  // ── Follow / Unfollow ─────────────────────────────────────────────────────
+  const handleFollow = async (target: User) => {
+    if (!user) { toast.error('Sign in to follow users'); return; }
+    const id = target.userId;
+    const nowFollowing = followedUsers.has(id);
+    // Optimistic update
+    setFollowedUsers((prev) => {
+      const next = new Set(prev);
+      nowFollowing ? next.delete(id) : next.add(id);
+      return next;
+    });
     try {
-      if (followedUsers.has(targetId)) {
-        await followsApi.unfollow(targetId);
-        setFollowedUsers(s => { const n = new Set(s); n.delete(targetId); return n; });
-        toast.success(`Unfollowed @${username}`);
+      if (nowFollowing) {
+        await followsApi.unfollow(id);
+        toast.success(`Unfollowed @${target.username}`);
       } else {
-        await followsApi.follow(targetId);
-        setFollowedUsers(s => new Set([...s, targetId]));
-        toast.success(`Following @${username}`);
+        await followsApi.follow(id);
+        toast.success(`Following @${target.username}`);
       }
     } catch {
+      // Revert optimistic update on failure
+      setFollowedUsers((prev) => {
+        const next = new Set(prev);
+        nowFollowing ? next.add(id) : next.delete(id);
+        return next;
+      });
       toast.error('Action failed');
     }
   };
 
-  const TABS: { key: SearchTab; label: string; icon: React.ReactNode; count?: number }[] = [
-    { key: 'all', label: 'All', icon: <Search className="w-3.5 h-3.5" /> },
-    { key: 'posts', label: 'Posts', icon: <FileText className="w-3.5 h-3.5" />, count: results?.posts.length },
-    { key: 'users', label: 'People', icon: <Users className="w-3.5 h-3.5" />, count: results?.users.length },
-    { key: 'hashtags', label: 'Tags', icon: <Hash className="w-3.5 h-3.5" />, count: results?.hashtags.length },
-  ];
+  // ── Derived display data ──────────────────────────────────────────────────
+  const allPosts    = results?.posts    ?? [];
+  const allUsers    = results?.users    ?? [];
+  const allHashtags = results?.hashtags ?? [];
+
+  const showPosts    = tab === 'all' || tab === 'posts';
+  const showUsers    = tab === 'all' || tab === 'users';
+  const showHashtags = tab === 'all' || tab === 'hashtags';
+  const hasResults   = results && (allPosts.length + allUsers.length + allHashtags.length) > 0;
 
   return (
     <WideLayout>
-      <div className="space-y-6">
-        {/* Search bar */}
+      <div className="max-w-5xl mx-auto px-4 py-6 space-y-8">
+
+        {/* ── Search bar ── */}
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
           <input
             ref={inputRef}
+            type="text"
             value={query}
             onChange={handleInput}
             placeholder="Search posts, people, hashtags…"
             className={cn(
-              'w-full h-12 pl-11 pr-10 bg-card border rounded-2xl text-foreground',
-              'placeholder:text-muted-foreground/60 text-sm transition-all duration-200 focus:outline-none',
-              query ? 'border-brand-500/50 ring-2 ring-brand-500/15' : 'border-border hover:border-border/80'
+              'w-full pl-11 pr-10 py-3.5 rounded-2xl border text-sm transition-all',
+              'bg-card text-foreground placeholder:text-muted-foreground',
+              'border-border focus:border-brand-500/60 focus:ring-2 focus:ring-brand-500/10 outline-none'
             )}
-            autoFocus
           />
           {query && (
-            <button onClick={() => { setQuery(''); setResults(null); inputRef.current?.focus(); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              onClick={() => { setQuery(''); setResults(null); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+            >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {results ? (
-          <>
-            {/* Tabs */}
-            <div className="flex gap-1 p-1 bg-surface rounded-xl">
-              {TABS.map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)}
+        {/* ── Search results ── */}
+        {query.trim() && (
+          <div className="space-y-4">
+            {/* Filter tabs */}
+            <div className="flex gap-2">
+              {(['all', 'posts', 'users', 'hashtags'] as SearchTab[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
                   className={cn(
-                    'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold flex-1 justify-center transition-all',
-                    tab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                  )}>
-                  {t.icon} {t.label}
-                  {t.count !== undefined && t.count > 0 && (
-                    <span className={cn('ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold',
-                      tab === t.key ? 'bg-brand-500/20 text-brand-400' : 'bg-surface text-muted-foreground')}>
-                      {t.count}
+                    'px-4 py-1.5 rounded-xl text-xs font-semibold capitalize transition-all border',
+                    tab === t
+                      ? 'bg-brand-500 text-white border-brand-500'
+                      : 'border-border text-muted-foreground hover:border-brand-500/30 hover:text-foreground'
+                  )}
+                >
+                  {t}
+                  {t !== 'all' && results && (
+                    <span className="ml-1 opacity-60">
+                      ({t === 'posts' ? allPosts.length : t === 'users' ? allUsers.length : allHashtags.length})
                     </span>
                   )}
                 </button>
@@ -133,131 +271,160 @@ export default function ExplorePage() {
             </div>
 
             {loading ? (
-              <div className="space-y-4">{[1,2,3].map(i => <PostSkeleton key={i} />)}</div>
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => <PostSkeleton key={i} />)}
+              </div>
+            ) : !hasResults ? (
+              <div className="text-center py-16 bg-card border border-border rounded-2xl">
+                <Search className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No results for "{query}"</p>
+              </div>
             ) : (
               <div className="space-y-6">
-                {/* People */}
-                {(tab === 'all' || tab === 'users') && results.users.length > 0 && (
+                {showUsers && allUsers.length > 0 && (
                   <section>
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <h3 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                       <Users className="w-3.5 h-3.5" /> People
                     </h3>
-                    <div className="bg-card border border-border rounded-2xl divide-y divide-border/50 overflow-hidden">
-                      {results.users.map(u => (
-                        <div key={u.userId} className="flex items-center gap-3 p-4 hover:bg-surface-hover transition-colors">
-                          <Link to={`/profile/${u.userId}`} className="flex items-center gap-3 flex-1 min-w-0">
-                            <Avatar src={u.profilePicUrl} name={u.fullName || u.username} size="sm" />
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-foreground truncate">{u.fullName || u.username}</p>
-                              <p className="text-xs text-muted-foreground">@{u.username}</p>
-                              {u.bio && <p className="text-xs text-muted-foreground/70 truncate mt-0.5">{u.bio}</p>}
-                            </div>
-                          </Link>
-                          {user && u.userId !== user.userId && (
-                            <Button variant={followedUsers.has(u.userId) ? 'secondary' : 'primary'} size="xs"
-                              onClick={() => handleFollow(u.userId, u.username)}>
-                              {followedUsers.has(u.userId) ? 'Unfollow' : 'Follow'}
-                            </Button>
-                          )}
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {allUsers.map((u) => (
+                        <SuggestedUserCard
+                          key={u.userId}
+                          user={u}
+                          isFollowing={followedUsers.has(u.userId)}
+                          onFollow={handleFollow}
+                        />
                       ))}
                     </div>
                   </section>
                 )}
 
-                {/* Hashtags */}
-                {(tab === 'all' || tab === 'hashtags') && results.hashtags.length > 0 && (
+                {showHashtags && allHashtags.length > 0 && (
                   <section>
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <h3 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                       <Hash className="w-3.5 h-3.5" /> Hashtags
                     </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {results.hashtags.map(h => (
-                        <div key={h.hashtagId}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border rounded-xl hover:border-brand-500/40 hover:bg-brand-500/5 transition-all cursor-pointer">
-                          <span className="text-brand-400 font-bold text-sm">#</span>
-                          <span className="text-sm font-semibold text-foreground">{h.tag}</span>
-                          <span className="text-xs text-muted-foreground ml-1">{formatCount(h.postCount)}</span>
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {allHashtags.map((h) => (
+                        <HashtagPill
+                          key={h.hashtagId ?? h.tag}
+                          tag={h.tag}
+                          count={h.postCount}
+                          onClick={() => {
+                            setQuery(`#${h.tag}`);
+                            doSearch(h.tag);
+                            setTab('posts');
+                          }}
+                        />
                       ))}
                     </div>
                   </section>
                 )}
 
-                {/* Posts */}
-                {(tab === 'all' || tab === 'posts') && results.posts.length > 0 && (
+                {showPosts && allPosts.length > 0 && (
                   <section>
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <h3 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                       <FileText className="w-3.5 h-3.5" /> Posts
                     </h3>
                     <div className="space-y-4">
-                      {results.posts.map(post => <PostCard key={post.postId} post={post} />)}
+                      {allPosts.map((p) => (
+                        <PostCard key={p.postId} post={p} onDeleted={() => {}} />
+                      ))}
                     </div>
                   </section>
                 )}
-
-                {results.posts.length === 0 && results.users.length === 0 && results.hashtags.length === 0 && (
-                  <div className="text-center py-16">
-                    <Search className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
-                    <h3 className="text-lg font-bold text-foreground mb-1">No results for "{query}"</h3>
-                    <p className="text-sm text-muted-foreground">Try different keywords or check your spelling.</p>
-                  </div>
-                )}
               </div>
             )}
-          </>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Trending */}
-            <div>
-              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" /> Trending Hashtags
-              </h2>
-              {loadingTrending ? (
-                <div className="space-y-2">{[1,2,3,4,5].map(i => <UserCardSkeleton key={i} />)}</div>
-              ) : (
-                <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border/50">
-                  {trending.map((h, i) => (
-                    <button key={h.hashtagId}
-                      onClick={() => { setQuery(h.tag); doSearch(h.tag); }}
-                      className="flex items-center gap-3 w-full px-4 py-3.5 hover:bg-surface-hover transition-colors text-left">
-                      <span className="text-xs font-bold text-muted-foreground w-5 text-center">#{i + 1}</span>
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-foreground">#{h.tag}</p>
-                        <p className="text-xs text-muted-foreground">{formatCount(h.postCount)} posts</p>
-                      </div>
-                      <TrendingUp className="w-3.5 h-3.5 text-brand-400/60" />
-                    </button>
+          </div>
+        )}
+
+        {/* ── Discovery (no query) ── */}
+        {!query.trim() && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            {/* Suggested users */}
+            <div className="lg:col-span-2 space-y-5">
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
+                  <div className="w-7 h-7 rounded-lg bg-brand-500/10 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-brand-400" />
+                  </div>
+                  Suggested for you
+                </h2>
+                {user && (
+                  <button
+                    onClick={loadSuggestedUsers}
+                    className="text-xs text-brand-400 hover:text-brand-300 transition-colors font-medium"
+                  >
+                    Refresh
+                  </button>
+                )}
+              </div>
+
+              {!user ? (
+                <div className="bg-card border border-border rounded-2xl p-8 text-center">
+                  <Compass className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground mb-4">Sign in to discover people to follow</p>
+                  <Link to="/login"><Button size="sm">Sign in</Button></Link>
+                </div>
+              ) : loadingSuggested ? (
+                <div className="space-y-3">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="h-16 rounded-xl bg-surface-hover animate-pulse" />
                   ))}
-                  {trending.length === 0 && (
-                    <div className="p-6 text-center text-sm text-muted-foreground">No trending hashtags yet</div>
-                  )}
+                </div>
+              ) : suggestedUsers.length === 0 ? (
+                <div className="bg-card border border-border rounded-2xl p-8 text-center">
+                  <Users className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">No suggestions right now</p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {suggestedUsers.map((u) => (
+                    <SuggestedUserCard
+                      key={u.userId}
+                      user={u}
+                      isFollowing={followedUsers.has(u.userId)}
+                      onFollow={handleFollow}
+                    />
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Tips */}
-            <div>
-              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Search className="w-4 h-4" /> Search Tips
+            {/* Trending hashtags */}
+            <div className="space-y-5">
+              <h2 className="flex items-center gap-2.5 text-base font-bold text-foreground">
+                <div className="w-7 h-7 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-yellow-400" />
+                </div>
+                Trending
               </h2>
-              <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-                {[
-                  { tip: 'Search by name or username', example: '"jane" or "janedoe"' },
-                  { tip: 'Find posts by keyword', example: '"photography"' },
-                  { tip: 'Discover hashtags', example: '"tech" or "design"' },
-                ].map((t, i) => (
-                  <div key={i} className="flex gap-3">
-                    <span className="w-6 h-6 rounded-full bg-brand-500/10 text-brand-400 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                      {i + 1}
-                    </span>
-                    <div>
-                      <p className="text-sm text-foreground font-medium">{t.tip}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">e.g. {t.example}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+
+              {loadingTrending ? (
+                <div className="space-y-2">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-14 rounded-xl bg-surface-hover animate-pulse" />
+                  ))}
+                </div>
+              ) : trending.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground text-sm">No trending topics</p>
+              ) : (
+                <div className="space-y-2">
+                  {trending.map((h) => (
+                    <HashtagPill
+                      key={h.hashtagId ?? h.tag}
+                      tag={h.tag}
+                      count={h.postCount}
+                      onClick={() => {
+                        setQuery(`#${h.tag}`);
+                        doSearch(h.tag);
+                        setTab('posts');
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

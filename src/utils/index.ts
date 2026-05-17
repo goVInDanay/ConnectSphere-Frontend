@@ -1,8 +1,8 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
-import type { AxiosError } from "axios";
-import type { ApiError } from "../types";
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
+import type { AxiosError } from 'axios';
+import type { ApiError } from '../types';
 
 // shadcn/ui style class merger
 export function cn(...inputs: ClassValue[]) {
@@ -16,9 +16,9 @@ export function formatDate(dateString: string): string {
     return formatDistanceToNow(date, { addSuffix: true });
   }
   if (isYesterday(date)) {
-    return "Yesterday";
+    return 'Yesterday';
   }
-  return format(date, "MMM d, yyyy");
+  return format(date, 'MMM d, yyyy');
 }
 
 // Relative time (e.g. "2 hours ago")
@@ -38,7 +38,7 @@ export function getErrorMessage(error: unknown): string {
   if (axiosErr.message) {
     return axiosErr.message;
   }
-  return "An unexpected error occurred";
+  return 'An unexpected error occurred';
 }
 
 // Format large numbers (1200 → 1.2k)
@@ -49,56 +49,49 @@ export function formatCount(n: number): string {
 }
 
 // Get initials from name/username
-export function getInitials(
-  name: string | null | undefined,
-  fallback = "?",
-): string {
+export function getInitials(name: string | null | undefined, fallback = '?'): string {
   if (!name) return fallback;
   return name
-    .split(" ")
+    .split(' ')
     .filter(Boolean)
     .slice(0, 2)
     .map((w) => w[0].toUpperCase())
-    .join("");
+    .join('');
 }
 
 // Truncate text
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength).trimEnd() + "…";
+  return text.slice(0, maxLength).trimEnd() + '…';
 }
 
 // Reaction emoji map
 export const REACTION_EMOJIS: Record<string, string> = {
-  LIKE: "👍",
-  LOVE: "❤️",
-  HAHA: "😂",
-  WOW: "😮",
-  SAD: "😢",
-  ANGRY: "😠",
+  LIKE: '👍',
+  LOVE: '❤️',
+  HAHA: '😂',
+  WOW: '😮',
+  SAD: '😢',
+  ANGRY: '😠',
 };
 
 // Media URL builder (handles relative paths from file server)
 export function buildMediaUrl(url: string): string {
-  if (!url) return "";
-  if (url.startsWith("http")) return url;
-  const clean = url.replace(/^\/uploads\//, "").replace(/^\/+/, "");
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
   // Relative paths served from /uploads/ by media service via gateway
-  return `http://localhost:8080/uploads/${clean}`;
+  return `/uploads/${url}`;
 }
 
 // Visibility icon/label
 export const VISIBILITY_CONFIG = {
-  PUBLIC: { label: "Public", icon: "🌍" },
-  FOLLOWERS: { label: "Followers", icon: "👥" },
-  PRIVATE: { label: "Only me", icon: "🔒" },
+  PUBLIC: { label: 'Public', icon: '🌍' },
+  FOLLOWERS: { label: 'Followers', icon: '👥' },
+  PRIVATE: { label: 'Only me', icon: '🔒' },
 } as const;
 
 // Debounce
-export function debounce<T extends (...args: unknown[]) => void>(
-  fn: T,
-  delay: number,
-): T {
+export function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
   let timer: ReturnType<typeof setTimeout>;
   return ((...args: unknown[]) => {
     clearTimeout(timer);
