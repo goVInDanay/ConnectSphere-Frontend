@@ -1,7 +1,14 @@
+<<<<<<< HEAD
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Zap } from 'lucide-react';
+=======
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { Zap } from "lucide-react";
+>>>>>>> recovery-branch
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -19,7 +26,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
               <div
                 key={i}
                 className="w-1.5 h-1.5 rounded-full bg-brand-500"
+<<<<<<< HEAD
                 style={{ animation: `bounce 1s ease-in-out ${i * 0.15}s infinite` }}
+=======
+                style={{
+                  animation: `bounce 1s ease-in-out ${i * 0.15}s infinite`,
+                }}
+>>>>>>> recovery-branch
               />
             ))}
           </div>

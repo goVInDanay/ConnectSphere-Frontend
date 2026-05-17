@@ -1,5 +1,5 @@
-import { apiClient } from '../client';
-import type { Follow } from '../../types';
+import { apiClient } from "../client";
+import type { Follow } from "../../types";
 
 // Note: backend entity is "Follows" but we alias as Follow in TS types
 export const followsApi = {
@@ -11,7 +11,9 @@ export const followsApi = {
 
   // DELETE /api/follows/{followeeId}
   unfollow: async (followeeId: number): Promise<{ message: string }> => {
-    const res = await apiClient.delete<{ message: string }>(`/follows/${followeeId}`);
+    const res = await apiClient.delete<{ message: string }>(
+      `/follows/${followeeId}`,
+    );
     return res.data;
   },
 
@@ -28,38 +30,54 @@ export const followsApi = {
   },
 
   // GET /api/follows/{userId}/follower-count  → { followerCount: number }
-  getFollowerCount: async (userId: number): Promise<{ followerCount: number }> => {
-    const res = await apiClient.get<{ followerCount: number }>(`/follows/${userId}/follower-count`);
+  getFollowerCount: async (
+    userId: number,
+  ): Promise<{ followerCount: number }> => {
+    const res = await apiClient.get<{ followerCount: number }>(
+      `/follows/${userId}/follower-count`,
+    );
     return res.data;
   },
 
-  // GET /api/follows/{userId}/following-count  → { followingCount: number } or { followerCount: number } (backend may reuse key)
-  getFollowingCount: async (userId: number): Promise<{ followingCount?: number; followerCount?: number }> => {
-    const res = await apiClient.get<{ followingCount?: number; followerCount?: number }>(`/follows/${userId}/following-count`);
+  // GET /api/follows/{userId}/following-count  → { followerCount: number } (reused key in backend)
+  getFollowingCount: async (
+    userId: number,
+  ): Promise<{ followingCount: number }> => {
+    const res = await apiClient.get<{ followingCount: number }>(
+      `/follows/${userId}/following-count`,
+    );
     return res.data;
   },
 
   // GET /api/follows/is-following/{followeeId}  → { isFollowing: boolean }
   isFollowing: async (followeeId: number): Promise<boolean> => {
-    const res = await apiClient.get<{ isFollowing: boolean }>(`/follows/is-following/${followeeId}`);
+    const res = await apiClient.get<{ isFollowing: boolean }>(
+      `/follows/is-following/${followeeId}`,
+    );
     return res.data.isFollowing;
   },
 
   // GET /api/follows/mutual  → { mutualFollowIds: number[] }
   getMutualFollows: async (): Promise<number[]> => {
-    const res = await apiClient.get<{ mutualFollowIds: number[] }>('/follows/mutual');
+    const res = await apiClient.get<{ mutualFollowIds: number[] }>(
+      "/follows/mutual",
+    );
     return res.data.mutualFollowIds;
   },
 
   // GET /api/follows/suggested  → { suggestedUserIds: number[] }
   getSuggestedUsers: async (): Promise<number[]> => {
-    const res = await apiClient.get<{ suggestedUserIds: number[] }>('/follows/suggested');
+    const res = await apiClient.get<{ suggestedUserIds: number[] }>(
+      "/follows/suggested",
+    );
     return res.data.suggestedUserIds;
   },
 
   // GET /api/follows/followee-ids  → { followeeIds: number[] }
   getFolloweeIds: async (): Promise<number[]> => {
-    const res = await apiClient.get<{ followeeIds: number[] }>('/follows/followee-ids');
+    const res = await apiClient.get<{ followeeIds: number[] }>(
+      "/follows/followee-ids",
+    );
     return res.data.followeeIds;
   },
 };

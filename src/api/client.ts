@@ -1,30 +1,49 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-// The gateway listens on 8080 and extracts JWT from either:
-//   1. Authorization: Bearer <token>  header
-//   2. cs_access_token cookie (set as HttpOnly by AuthService)
-// We use withCredentials so cookies are sent automatically.
-// We also store the access token in memory and attach it as Bearer
-// (cookie is the fallback the gateway supports).
+// ── Token storage — sessionStorage ────────────────────────────────────────────
+// sessionStorage survives page refreshes within the same tab but is cleared
+// when the tab closes. This means:
+//   • Refresh (F5) → token still available → followers-only posts load correctly
+//   • Tab close / new tab → token gone → user must re-authenticate (secure)
+//   • Unlike a cookie we control exactly when it is sent
+const TOKEN_KEY = "cs_token_v1";
 
-let _accessToken: string | null = null;
 let _isRefreshing = false;
 let _refreshQueue: Array<(token: string | null) => void> = [];
 
 export const tokenStore = {
-  get: () => _accessToken,
-  set: (t: string | null) => { _accessToken = t; },
-  clear: () => { _accessToken = null; },
+  get: () => sessionStorage.getItem(TOKEN_KEY),
+  set: (t: string) => sessionStorage.setItem(TOKEN_KEY, t),
+  clear: () => sessionStorage.removeItem(TOKEN_KEY),
 };
 
 export const apiClient = axios.create({
-  baseURL: '/api',
-  withCredentials: true,       // sends cs_access_token + cs_refresh_token cookies
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: "/api",
+  withCredentials: true, // sends cs_refresh_token cookie automatically
+  headers: { "Content-Type": "application/json" },
   timeout: 15_000,
 });
 
 // ── Request interceptor: attach Bearer token ──────────────────────────────────
+// ── Notification client ──────────────────────────────────────────────────────
+// No explicit gateway route for /api/notifications/** — reached via Eureka
+// discovery locator at /notification-service/api/notifications/**
+export const notificationClient = axios.create({
+  baseURL: "/notification-service/api",
+  withCredentials: true,
+  headers: { "Content-Type": "application/json" },
+  timeout: 15_000,
+});
+
+// Add Bearer token to the notification client too
+notificationClient.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = tokenStore.get();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  },
+);
+
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = tokenStore.get();
   if (token) {
@@ -33,17 +52,19 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// ── Response interceptor: handle 401 + refresh ───────────────────────────────
+// ── Response interceptor: 401 → silent refresh → retry ───────────────────────
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const original = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
 
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
 
       if (_isRefreshing) {
-        // Queue requests while refresh is in-flight
+        // Queue concurrent requests while a refresh is already in-flight
         return new Promise((resolve, reject) => {
           _refreshQueue.push((token) => {
             if (token) {
@@ -58,8 +79,9 @@ apiClient.interceptors.response.use(
 
       _isRefreshing = true;
       try {
-        // cs_refresh_token cookie is sent automatically
-        const { data } = await apiClient.post<{ accessToken: string }>('/auth/refresh');
+        const { data } = await apiClient.post<{ accessToken: string }>(
+          "/auth/refresh",
+        );
         tokenStore.set(data.accessToken);
         _refreshQueue.forEach((cb) => cb(data.accessToken));
         _refreshQueue = [];
@@ -69,8 +91,7 @@ apiClient.interceptors.response.use(
         tokenStore.clear();
         _refreshQueue.forEach((cb) => cb(null));
         _refreshQueue = [];
-        // Redirect to login
-        window.location.href = '/login';
+        window.location.href = "/login";
         return Promise.reject(error);
       } finally {
         _isRefreshing = false;
@@ -78,5 +99,5 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
