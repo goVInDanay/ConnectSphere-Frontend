@@ -1,0 +1,103 @@
+# =========================
+# Node.js / React
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+
+# Build folders
+dist/
+build/
+.next/
+out/
+coverage/
+
+# =========================
+# Environment Variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Logs
+# =========================
+logs
+*.log
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# TypeScript
+# =========================
+*.tsbuildinfo
+
+# =========================
+# Testing
+# =========================
+coverage/
+jest-cache/
+
+# =========================
+# Docker
+# =========================
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+
+# =========================
+# Misc
+# =========================
+*.pem
+*.key
+
+# =========================
+# Java / Spring Boot (if used)
+# =========================
+target/
+*.jar
+*.war
+*.class
+*.log
+
+# Maven / Gradle
+.mvn/
+.mvn/wrapper/maven-wrapper.jar
+gradle-app.setting
+.gradle/
+build/
+
+# =========================
+# Database
+# =========================
+*.sqlite
+*.db
+
+# =========================
+# Uploads / Media
+# =========================
+uploads/
+public/uploads/
+
+# =========================
+# Cache
+# =========================
+.cache/
+.tmp/
+.temp/

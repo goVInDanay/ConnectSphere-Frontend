@@ -1,0 +1,509 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, X, Trash2, ChevronLeft, ChevronRight, Type, Image as ImageIcon } from 'lucide-react';
+import { Avatar } from '../ui/Avatar';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { storiesApi, followsApi, authApi } from '../../api';
+import type { Story, User } from '../../types';
+import { timeAgo, cn } from '../../utils';
+
+interface StoryGroup {
+  userId: number;
+  author: User | null;
+  stories: Story[];
+}
+
+interface ViewerProps {
+  groups: StoryGroup[];
+  initialGroupIdx: number;
+  onClose: () => void;
+  onDeleted: (storyId: number) => void;
+}
+
+function StoryViewer({ groups, initialGroupIdx, onClose, onDeleted }: ViewerProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [groupIdx, setGroupIdx] = useState(initialGroupIdx);
+  const [storyIdx, setStoryIdx] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const startRef = useRef<number>(0);
+  const pausedAtRef = useRef<number>(0);
+  const DURATION = 5000;
+
+  const group = groups[groupIdx];
+  const story = group?.stories[storyIdx];
+
+  useEffect(() => {
+    if (!story) return;
+    setProgress(0);
+    storiesApi.viewStory(story.storyId).catch(() => {});
+    startRef.current = Date.now();
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      if (paused) return;
+      const elapsed = Date.now() - startRef.current;
+      const pct = Math.min((elapsed / DURATION) * 100, 100);
+      setProgress(pct);
+      if (pct >= 100) { clearInterval(timerRef.current); advance(); }
+    }, 50);
+    return () => clearInterval(timerRef.current);
+  }, [story?.storyId, paused]);
+
+  const advance = () => {
+    if (storyIdx < (group?.stories.length ?? 0) - 1) {
+      setStoryIdx((i) => i + 1);
+    } else if (groupIdx < groups.length - 1) {
+      setGroupIdx((i) => i + 1);
+      setStoryIdx(0);
+    } else {
+      onClose();
+    }
+  };
+
+  const goBack = () => {
+    if (storyIdx > 0) setStoryIdx((i) => i - 1);
+    else if (groupIdx > 0) { setGroupIdx((i) => i - 1); setStoryIdx(0); }
+  };
+
+  const handleDelete = async () => {
+    if (!story) return;
+    try {
+      await storiesApi.deleteStory(story.storyId);
+      onDeleted(story.storyId);
+      toast.success('Story deleted');
+      advance();
+    } catch { toast.error('Failed to delete story'); }
+  };
+
+  if (!story || !group) return null;
+
+  const isVideo = story.mediaType === 'VIDEO' || story.mediaUrl.match(/\.(mp4|mov|webm)$/i);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-[380px] h-[85vh] rounded-3xl overflow-hidden bg-black shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={() => setPaused(true)}
+        onMouseUp={() => { setPaused(false); startRef.current = Date.now() - (progress / 100) * DURATION; }}
+        onTouchStart={() => setPaused(true)}
+        onTouchEnd={() => { setPaused(false); startRef.current = Date.now() - (progress / 100) * DURATION; }}
+      >
+        {/* Progress bars */}
+        <div className="absolute top-0 left-0 right-0 z-20 flex gap-1 p-3 pt-4">
+          {group.stories.map((_, i) => (
+            <div key={i} className="flex-1 h-[3px] rounded-full bg-white/25 overflow-hidden">
+              <div
+                className="h-full bg-white rounded-full transition-none"
+                style={{
+                  width: i < storyIdx ? '100%' : i === storyIdx ? `${progress}%` : '0%',
+                }}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Header */}
+        <div className="absolute top-8 left-0 right-0 z-20 flex items-center justify-between px-4 pt-2">
+          <div className="flex items-center gap-2.5">
+            <Avatar src={group.author?.profilePicUrl} name={group.author?.username} size="sm" ring />
+            <div>
+              <p className="text-white text-sm font-semibold drop-shadow">@{group.author?.username}</p>
+              <p className="text-white/60 text-xs">{timeAgo(story.createdAt)}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {user?.userId === story.authorId && (
+              <button
+                onClick={handleDelete}
+                className="p-2 rounded-full bg-white/10 hover:bg-rose-500/30 text-white/80 hover:text-rose-300 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Media */}
+        {isVideo ? (
+          <video
+            src={story.mediaUrl}
+            className="w-full h-full object-cover"
+            autoPlay
+            muted
+            playsInline
+            loop={false}
+          />
+        ) : (
+          <img src={story.mediaUrl} alt="story" className="w-full h-full object-cover" />
+        )}
+
+        {/* Caption overlay */}
+        {story.caption && (
+          <div className="absolute bottom-12 left-0 right-0 px-5 pb-4 pt-12 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+            <p className="text-white text-sm leading-relaxed font-medium drop-shadow">
+              {story.caption}
+            </p>
+          </div>
+        )}
+
+        {/* View count */}
+        <div className="absolute bottom-4 right-4 z-20">
+          <span className="flex items-center gap-1 text-white/60 text-xs bg-black/30 rounded-full px-2 py-1">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            {story.viewCount}
+          </span>
+        </div>
+
+        {/* Tap nav zones */}
+        <button className="absolute left-0 top-16 bottom-0 w-1/3 z-10" onClick={(e) => { e.stopPropagation(); goBack(); }} />
+        <button className="absolute right-0 top-16 bottom-0 w-1/3 z-10" onClick={(e) => { e.stopPropagation(); advance(); }} />
+
+        {/* Group arrows */}
+        {groupIdx > 0 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setGroupIdx((i) => i - 1); setStoryIdx(0); }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-white hover:bg-black/60 transition-all"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
+        {groupIdx < groups.length - 1 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setGroupIdx((i) => i + 1); setStoryIdx(0); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-white hover:bg-black/60 transition-all"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface CreatorProps {
+  file: File;
+  previewUrl: string;
+  onConfirm: (file: File, caption: string) => void;
+  onCancel: () => void;
+  uploading: boolean;
+}
+
+function StoryCreator({ file, previewUrl, onConfirm, onCancel, uploading }: CreatorProps) {
+  const [caption, setCaption] = useState('');
+  const isVideo = file.type.startsWith('video/');
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="relative w-full max-w-[380px] rounded-3xl overflow-hidden bg-black shadow-2xl">
+        {/* Preview */}
+        <div className="relative h-[65vh]">
+          {isVideo ? (
+            <video src={previewUrl} className="w-full h-full object-cover" autoPlay muted playsInline loop />
+          ) : (
+            <img src={previewUrl} alt="preview" className="w-full h-full object-cover" />
+          )}
+
+          {/* Caption overlay preview */}
+          {caption && (
+            <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-10 bg-gradient-to-t from-black/80 to-transparent">
+              <p className="text-white text-sm leading-relaxed font-medium">{caption}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Controls */}
+        <div className="bg-zinc-900 p-4 space-y-3">
+          {/* Caption input */}
+          <div className="flex items-start gap-2">
+            <Type className="w-4 h-4 text-muted-foreground mt-2.5 shrink-0" />
+            <textarea
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="Add a caption…"
+              rows={2}
+              maxLength={500}
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-500/50 resize-none"
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs text-white/30">
+            <span className="flex items-center gap-1">
+              <ImageIcon className="w-3 h-3" />
+              {file.name.length > 24 ? file.name.slice(0, 24) + '…' : file.name}
+            </span>
+            <span>{caption.length}/500</span>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onCancel}
+              disabled={uploading}
+              className="flex-1 py-2.5 rounded-xl border border-white/10 text-white/70 text-sm font-medium hover:bg-white/5 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onConfirm(file, caption)}
+              disabled={uploading}
+              className="flex-1 py-2.5 rounded-xl bg-brand-500 text-white text-sm font-semibold hover:bg-brand-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {uploading ? (
+                <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Posting…</>
+              ) : 'Post Story'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function StoriesBar() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [groups, setGroups] = useState<StoryGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerGroupIdx, setViewerGroupIdx] = useState(0);
+
+  // Creator modal state
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadStories();
+    return () => { if (pendingPreview) URL.revokeObjectURL(pendingPreview); };
+  }, [user]);
+
+  const loadStories = async () => {
+    if (!user) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const followeeIds = await followsApi.getFolloweeIds();
+      const authorIds = [...new Set([user.userId, ...followeeIds])];
+      const stories = await storiesApi.getStoriesFeed(authorIds);
+
+      const map = new Map<number, Story[]>();
+      stories.forEach((s) => {
+        if (!map.has(s.authorId)) map.set(s.authorId, []);
+        map.get(s.authorId)!.push(s);
+      });
+
+      const grouped: StoryGroup[] = await Promise.all(
+        Array.from(map.entries()).map(async ([uid, strs]) => {
+          const author = await authApi.getProfile(uid).catch(() => null);
+          return { userId: uid, author, stories: strs };
+        })
+      );
+
+      // Own stories first
+      grouped.sort((a, b) =>
+        a.userId === user.userId ? -1 : b.userId === user.userId ? 1 : 0
+      );
+      setGroups(grouped);
+    } catch {
+      setGroups([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 1: user picks a file → open creator modal
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const url = URL.createObjectURL(file);
+    setPendingFile(file);
+    setPendingPreview(url);
+  };
+
+  // Step 2: user confirms → upload with caption
+  const handleConfirmUpload = async (file: File, caption: string) => {
+    setUploading(true);
+    try {
+      await storiesApi.createStory(file, caption);
+      toast.success('Story posted!');
+      setPendingFile(null);
+      if (pendingPreview) { URL.revokeObjectURL(pendingPreview); setPendingPreview(null); }
+      loadStories();
+    } catch {
+      toast.error('Failed to upload story');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCancelCreator = () => {
+    setPendingFile(null);
+    if (pendingPreview) { URL.revokeObjectURL(pendingPreview); setPendingPreview(null); }
+  };
+
+  const handleStoryDeleted = (storyId: number) => {
+    setGroups((prev) =>
+      prev
+        .map((g) => ({ ...g, stories: g.stories.filter((s) => s.storyId !== storyId) }))
+        .filter((g) => g.stories.length > 0)
+    );
+  };
+
+  const ownGroup = groups.find((g) => g.userId === user?.userId);
+
+  if (!user) return null;
+
+  return (
+    <>
+      <div className="bg-card border border-border rounded-2xl p-4">
+        <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-1">
+          {/* Add / Own story bubble */}
+          <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+            {ownGroup ? (
+              <button
+                onClick={() => {
+                  setViewerGroupIdx(groups.findIndex((g) => g.userId === user.userId));
+                  setViewerOpen(true);
+                }}
+                className="story-ring p-[2.5px] rounded-full hover:opacity-90 transition-opacity"
+              >
+                <div className="bg-background p-[2px] rounded-full">
+                  <Avatar src={user.profilePicUrl} name={user.fullName || user.username} size="md" />
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className={cn(
+                  'relative w-12 h-12 rounded-full border-2 border-dashed border-brand-500/50',
+                  'flex items-center justify-center bg-brand-500/5',
+                  'hover:border-brand-500 hover:bg-brand-500/10 transition-all',
+                  uploading && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                {uploading ? (
+                  <div className="w-4 h-4 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Plus className="w-5 h-5 text-brand-400" />
+                )}
+              </button>
+            )}
+            <span className="text-[11px] text-muted-foreground font-medium">
+              {ownGroup ? 'Your story' : uploading ? 'Uploading…' : 'Add story'}
+            </span>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*,video/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+          </div>
+
+          {/* Add to own story button (even if own story exists) */}
+          {ownGroup && (
+            <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className={cn(
+                  'w-12 h-12 rounded-full border-2 border-dashed border-brand-500/40',
+                  'flex items-center justify-center bg-brand-500/5',
+                  'hover:border-brand-500 hover:bg-brand-500/10 transition-all',
+                  uploading && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                <Plus className="w-4 h-4 text-brand-400" />
+              </button>
+              <span className="text-[11px] text-muted-foreground font-medium">Add</span>
+            </div>
+          )}
+
+          {/* Other users' stories */}
+          {groups
+            .filter((g) => g.userId !== user?.userId)
+            .map((group) => (
+              <button
+                key={group.userId}
+                onClick={() => {
+                  setViewerGroupIdx(groups.indexOf(group));
+                  setViewerOpen(true);
+                }}
+                className="flex flex-col items-center gap-1.5 flex-shrink-0 hover:opacity-90 transition-opacity"
+              >
+                <div className="story-ring p-[2.5px] rounded-full">
+                  <div className="bg-background p-[2px] rounded-full">
+                    <Avatar
+                      src={group.author?.profilePicUrl}
+                      name={group.author?.fullName || group.author?.username}
+                      size="md"
+                    />
+                  </div>
+                </div>
+                <span className="text-[11px] text-muted-foreground font-medium max-w-[52px] truncate">
+                  {group.author?.username || '…'}
+                </span>
+              </button>
+            ))}
+
+          {!loading && groups.length === 0 && (
+            <p className="text-xs text-muted-foreground self-center py-1">
+              No stories yet — be the first!
+            </p>
+          )}
+
+          {loading && (
+            <div className="flex gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-surface animate-pulse" />
+                  <div className="w-10 h-2.5 rounded bg-surface animate-pulse" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Viewer */}
+      {viewerOpen && groups.length > 0 && (
+        <StoryViewer
+          groups={groups}
+          initialGroupIdx={viewerGroupIdx}
+          onClose={() => setViewerOpen(false)}
+          onDeleted={handleStoryDeleted}
+        />
+      )}
+
+      {/* Creator modal */}
+      {pendingFile && pendingPreview && (
+        <StoryCreator
+          file={pendingFile}
+          previewUrl={pendingPreview}
+          onConfirm={handleConfirmUpload}
+          onCancel={handleCancelCreator}
+          uploading={uploading}
+        />
+      )}
+    </>
+  );
+}
