@@ -1,37 +1,103 @@
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# production
-/build
-/dist
-
-# misc
-.DS_Store
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# logs
+# =========================
+# Node.js / React
+# =========================
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+package-lock.json
+yarn.lock
 
-# editor directories and files
+# Build folders
+dist/
+build/
+.next/
+out/
+coverage/
+
+# =========================
+# Environment Variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Logs
+# =========================
+logs
+*.log
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE / Editor
+# =========================
 .vscode/
 .idea/
 *.swp
 *.swo
 
+# =========================
 # TypeScript
+# =========================
 *.tsbuildinfo
 
-# testing
-/coverage
+# =========================
+# Testing
+# =========================
+coverage/
+jest-cache/
 
-# Vercel
-.vercel
+# =========================
+# Docker
+# =========================
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+
+# =========================
+# Misc
+# =========================
+*.pem
+*.key
+
+# =========================
+# Java / Spring Boot (if used)
+# =========================
+target/
+*.jar
+*.war
+*.class
+*.log
+
+# Maven / Gradle
+.mvn/
+.mvn/wrapper/maven-wrapper.jar
+gradle-app.setting
+.gradle/
+build/
+
+# =========================
+# Database
+# =========================
+*.sqlite
+*.db
+
+# =========================
+# Uploads / Media
+# =========================
+uploads/
+public/uploads/
+
+# =========================
+# Cache
+# =========================
+.cache/
+.tmp/
+.temp/

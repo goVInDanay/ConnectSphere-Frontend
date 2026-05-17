@@ -1,26 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Globe, Users, Lock } from "lucide-react";
-import { AppLayout } from "../components/layout/AppLayout";
-import { Button } from "../components/ui/Button";
-import { useAuth } from "../context/AuthContext";
-import { useToast } from "../context/ToastContext";
-import { postsApi } from "../api";
-import type { Post, Visibility } from "../types";
-import { getErrorMessage, cn } from "../utils";
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Globe, Users, Lock } from 'lucide-react';
+import { AppLayout } from '../components/layout/AppLayout';
+import { Button } from '../components/ui/Button';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { postsApi } from '../api';
+import type { Post, Visibility } from '../types';
+import { getErrorMessage, cn } from '../utils';
 
-const VISIBILITY_OPTIONS: {
-  value: Visibility;
-  label: string;
-  icon: React.ReactNode;
-}[] = [
-  { value: "PUBLIC", label: "Public", icon: <Globe className="w-4 h-4" /> },
-  {
-    value: "FOLLOWERS",
-    label: "Followers only",
-    icon: <Users className="w-4 h-4" />,
-  },
-  { value: "PRIVATE", label: "Only me", icon: <Lock className="w-4 h-4" /> },
+const VISIBILITY_OPTIONS: { value: Visibility; label: string; icon: React.ReactNode }[] = [
+  { value: 'PUBLIC',    label: 'Public',          icon: <Globe  className="w-4 h-4" /> },
+  { value: 'FOLLOWERS', label: 'Followers only',  icon: <Users  className="w-4 h-4" /> },
+  { value: 'PRIVATE',   label: 'Only me',         icon: <Lock   className="w-4 h-4" /> },
 ];
 
 export default function EditPostPage() {
@@ -29,51 +21,52 @@ export default function EditPostPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [post, setPost] = useState<Post | null>(null);
-  const [content, setContent] = useState("");
-  const [visibility, setVisibility] = useState<Visibility>("PUBLIC");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [post,       setPost]       = useState<Post | null>(null);
+  const [content,    setContent]    = useState<string>('');
+  const [visibility, setVisibility] = useState<Visibility>('PUBLIC');
+  const [loading,    setLoading]    = useState(true);
+  const [saving,     setSaving]     = useState(false);
+  const [notFound,   setNotFound]   = useState(false);
 
   useEffect(() => {
-    if (!postId) return;
+    if (!postId) { setNotFound(true); setLoading(false); return; }
     postsApi
       .getPost(parseInt(postId, 10))
       .then((p) => {
         if (p.authorId !== user?.userId) {
-          toast.error("Unauthorized");
-          navigate("/");
+          toast.error('You can only edit your own posts');
+          navigate(-1);
           return;
         }
         setPost(p);
-        setContent(p.content);
-        setVisibility(p.visibility);
+        setContent(p.content ?? '');
+        setVisibility(p.visibility ?? 'PUBLIC');
       })
       .catch(() => {
-        toast.error("Post not found");
-        navigate("/");
+        setNotFound(true);
+        toast.error('Post not found');
       })
       .finally(() => setLoading(false));
-  }, [postId, user]);
+  }, [postId, user?.userId]);
 
   const handleSave = async () => {
     if (!post || !content.trim()) return;
     setSaving(true);
     try {
       await postsApi.updatePost(post.postId, { content: content.trim() });
-      // Update visibility separately if changed
       if (visibility !== post.visibility) {
         await postsApi.changeVisibility(post.postId, { visibility });
       }
-      toast.success("Post updated");
+      toast.success('Post updated!');
       navigate(-1);
     } catch (err) {
-      toast.error("Update failed", getErrorMessage(err));
+      toast.error('Update failed', getErrorMessage(err));
     } finally {
       setSaving(false);
     }
   };
 
+  // ── Loading skeleton ──────────────────────────────────────────────────────
   if (loading) {
     return (
       <AppLayout>
@@ -85,6 +78,21 @@ export default function EditPostPage() {
     );
   }
 
+  // ── Post not found / unauthorized ─────────────────────────────────────────
+  if (notFound || !post) {
+    return (
+      <AppLayout>
+        <div className="text-center py-20">
+          <p className="text-muted-foreground">Post not found.</p>
+          <Button variant="ghost" className="mt-4" onClick={() => navigate(-1)}>
+            Go back
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // ── Editor ────────────────────────────────────────────────────────────────
   return (
     <AppLayout>
       <div className="space-y-4">
@@ -107,23 +115,21 @@ export default function EditPostPage() {
             maxLength={5000}
           />
           <div className="text-xs text-muted-foreground text-right">
-            {content.length}/5000
+            {(content ?? '').length}/5000
           </div>
 
           <div className="border-t border-border/40 pt-4">
-            <p className="text-xs font-medium text-muted-foreground mb-3">
-              Visibility
-            </p>
-            <div className="flex gap-2">
+            <p className="text-xs font-medium text-muted-foreground mb-3">Visibility</p>
+            <div className="flex gap-2 flex-wrap">
               {VISIBILITY_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setVisibility(opt.value)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-all",
+                    'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-all',
                     visibility === opt.value
-                      ? "bg-brand-500/10 border-brand-500/40 text-brand-400"
-                      : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground",
+                      ? 'bg-brand-500/10 border-brand-500/40 text-brand-400'
+                      : 'border-border text-muted-foreground hover:border-border/80 hover:text-foreground'
                   )}
                 >
                   {opt.icon} {opt.label}
@@ -140,7 +146,7 @@ export default function EditPostPage() {
               size="sm"
               isLoading={saving}
               onClick={handleSave}
-              disabled={!content.trim()}
+              disabled={!content.trim() || saving}
             >
               Save changes
             </Button>

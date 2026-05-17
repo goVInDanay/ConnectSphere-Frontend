@@ -1,6 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { authApi, tokenStore } from '../api';
-import type { UserSummary, LoginRequest, RegisterRequest } from '../types';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
+import { authApi, tokenStore } from "../api";
+import type { UserSummary, LoginRequest, RegisterRequest } from "../types";
 
 interface AuthContextType {
   user: UserSummary | null;
@@ -13,9 +20,14 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
-const USER_STORAGE_KEY = 'cs_user_v1';
+const USER_STORAGE_KEY = "cs_user_v1";
+
+function normalizeRole(role: string): string {
+  if (!role) return role;
+  return role.startsWith("ROLE_") ? role.slice(5) : role;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserSummary | null>(() => {
@@ -26,9 +38,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const hasUser = !!localStorage.getItem(USER_STORAGE_KEY);
+      const hasToken = !!sessionStorage.getItem("cs_token_v1");
+      return !(hasUser && hasToken);
+    } catch {
+      return false;
+    }
+  });
 
-  // On mount, try to restore session using refresh token cookie
   useEffect(() => {
     const restore = async () => {
       const stored = localStorage.getItem(USER_STORAGE_KEY);
@@ -36,13 +55,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
         return;
       }
+      let cachedUser: UserSummary | null = null;
       try {
-        // Attempt silent refresh — cs_refresh_token cookie sent automatically
+        cachedUser = JSON.parse(stored);
+      } catch {
+        localStorage.removeItem(USER_STORAGE_KEY);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
         const { accessToken } = await authApi.refresh();
         tokenStore.set(accessToken);
-        // Re-fetch profile to get fresh data
-        const parsed: UserSummary = JSON.parse(stored);
-        const fresh = await authApi.getProfile(parsed.userId);
+        const fresh = await authApi.getProfile(cachedUser!.userId);
         const summary: UserSummary = {
           userId: fresh.userId,
           username: fresh.username,
@@ -50,16 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           fullName: fresh.fullName,
           bio: fresh.bio,
           profilePicUrl: fresh.profilePicUrl,
-          role: fresh.role,
-          isActive: fresh.isActive,
+          role: normalizeRole(fresh.role),
+          active: fresh.active,
         };
         setUser(summary);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(summary));
       } catch {
-        // Refresh failed — session expired
-        tokenStore.clear();
-        setUser(null);
-        localStorage.removeItem(USER_STORAGE_KEY);
+        setUser(cachedUser);
       } finally {
         setIsLoading(false);
       }
@@ -70,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (data: LoginRequest) => {
     const res = await authApi.login(data);
     tokenStore.set(res.accessToken);
-    setUser(res.user);
+    setUser({ ...res.user, role: normalizeRole(res.user.role) });
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(res.user));
   }, []);
 
@@ -108,19 +130,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fullName: fresh.fullName,
         bio: fresh.bio,
         profilePicUrl: fresh.profilePicUrl,
-        role: fresh.role,
-        isActive: fresh.isActive,
+        role: normalizeRole(fresh.role),
+        active: fresh.active,
       };
       setUser(summary);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(summary));
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [user]);
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isAuthenticated: !!user, login, register, logout, updateUser, refreshUser }}
+      value={{
+        user,
+        isLoading,
+        isAuthenticated: !!user,
+        login,
+        register,
+        logout,
+        updateUser,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -129,6 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthContextType {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
