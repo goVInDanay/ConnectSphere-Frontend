@@ -1,20 +1,3 @@
-<<<<<<< HEAD
-import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import {
-  Home, Compass, Film, User, LogOut, Zap
-} from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
-import { Avatar } from '../ui/Avatar';
-import { cn } from '../../utils';
-
-const NAV_ITEMS = [
-  { to: '/', icon: Home, label: 'Home', exact: true },
-  { to: '/explore', icon: Compass, label: 'Explore' },
-  { to: '/stories', icon: Film, label: 'Stories' },
-];
-=======
 import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
@@ -33,7 +16,6 @@ import { useNotifications } from "../../context/NotificationContext";
 import { Avatar } from "../ui/Avatar";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { cn } from "../../utils";
->>>>>>> recovery-branch
 
 function NavItem({
   to,
@@ -41,20 +23,14 @@ function NavItem({
   label,
   exact,
   mobile,
-<<<<<<< HEAD
-=======
   badge,
->>>>>>> recovery-branch
 }: {
   to: string;
   icon: React.ElementType;
   label: string;
   exact?: boolean;
   mobile?: boolean;
-<<<<<<< HEAD
-=======
   badge?: number;
->>>>>>> recovery-branch
 }) {
   return (
     <NavLink
@@ -62,17 +38,6 @@ function NavItem({
       end={exact}
       className={({ isActive }) =>
         cn(
-<<<<<<< HEAD
-          'group relative flex items-center gap-3.5 rounded-xl transition-all duration-200',
-          mobile
-            ? 'flex-col gap-1 px-2 py-1.5 text-[10px] font-medium'
-            : 'px-3.5 py-2.5 text-sm font-medium',
-          isActive
-            ? mobile
-              ? 'text-brand-400'
-              : 'bg-brand-500/10 text-brand-400 nav-active-pill'
-            : 'text-muted-foreground hover:text-foreground hover:bg-surface-hover'
-=======
           "group relative flex items-center gap-3.5 rounded-xl transition-all duration-200",
           mobile
             ? "flex-col gap-1 px-2 py-1.5 text-[10px] font-medium"
@@ -82,21 +47,11 @@ function NavItem({
               ? "text-brand-400"
               : "bg-brand-500/10 text-brand-400 nav-active-pill"
             : "text-muted-foreground hover:text-foreground hover:bg-surface-hover",
->>>>>>> recovery-branch
         )
       }
     >
       {({ isActive }) => (
         <>
-<<<<<<< HEAD
-          <Icon
-            className={cn(
-              'transition-all duration-200',
-              mobile ? 'w-5 h-5' : 'w-4.5 h-4.5',
-              isActive && !mobile && 'drop-shadow-[0_0_8px_rgba(99,102,241,0.6)]'
-            )}
-          />
-=======
           <span className="relative">
             <Icon
               className={cn(
@@ -113,7 +68,6 @@ function NavItem({
               </span>
             )}
           </span>
->>>>>>> recovery-branch
           <span>{label}</span>
           {isActive && !mobile && (
             <span className="absolute right-3 w-1.5 h-1.5 rounded-full bg-brand-400" />
@@ -128,10 +82,6 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-<<<<<<< HEAD
-  const [loggingOut, setLoggingOut] = useState(false);
-
-=======
   const { unreadCount } = useNotifications();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -149,20 +99,13 @@ export function Sidebar() {
     },
   ];
 
->>>>>>> recovery-branch
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
       await logout();
-<<<<<<< HEAD
-      navigate('/login');
-    } catch {
-      toast.error('Logout failed');
-=======
       navigate("/login");
     } catch {
       toast.error("Logout failed");
->>>>>>> recovery-branch
     } finally {
       setLoggingOut(false);
     }
@@ -170,10 +113,6 @@ export function Sidebar() {
 
   return (
     <>
-<<<<<<< HEAD
-      {/* ── Desktop Sidebar ── */}
-=======
->>>>>>> recovery-branch
       <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-60 flex-col z-40 border-r border-border bg-card/50 backdrop-blur-sm">
         {/* Logo */}
         <div className="p-5 pb-3">
@@ -181,35 +120,18 @@ export function Sidebar() {
             <div className="w-8 h-8 rounded-xl bg-brand-gradient flex items-center justify-center shadow-glow-sm">
               <Zap className="w-4 h-4 text-white" />
             </div>
-<<<<<<< HEAD
-            <span className="text-lg font-bold gradient-text tracking-tight">ConnectSphere</span>
-=======
             <span className="text-lg font-bold gradient-text tracking-tight">
               ConnectSphere
             </span>
->>>>>>> recovery-branch
           </div>
         </div>
 
         {/* Navigation */}
-<<<<<<< HEAD
-        <nav className="flex-1 px-3 py-2 space-y-0.5">
-=======
         <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
->>>>>>> recovery-branch
           {NAV_ITEMS.map((item) => (
             <NavItem key={item.to} {...item} />
           ))}
           {user && (
-<<<<<<< HEAD
-            <NavItem to={`/profile/${user.userId}`} icon={User} label="Profile" />
-          )}
-        </nav>
-
-        {/* User section */}
-        {user && (
-          <div className="p-3 border-t border-border">
-=======
             <NavItem
               to={`/profile/${user.userId}`}
               icon={User}
@@ -236,7 +158,6 @@ export function Sidebar() {
               </span>
               <NotificationBell />
             </div>
->>>>>>> recovery-branch
             <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-hover transition-colors group">
               <Avatar
                 src={user.profilePicUrl}
@@ -248,13 +169,9 @@ export function Sidebar() {
                 <p className="text-sm font-semibold text-foreground truncate">
                   {user.fullName || user.username}
                 </p>
-<<<<<<< HEAD
-                <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
-=======
                 <p className="text-xs text-muted-foreground truncate">
                   @{user.username}
                 </p>
->>>>>>> recovery-branch
               </div>
               <button
                 onClick={handleLogout}
@@ -269,12 +186,6 @@ export function Sidebar() {
         )}
       </aside>
 
-<<<<<<< HEAD
-      {/* ── Mobile Bottom Nav ── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-border/50 backdrop-blur-xl">
-        <div className="flex items-center justify-around h-16 px-2">
-          {NAV_ITEMS.map((item) => (
-=======
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-border/50 backdrop-blur-xl">
         <div className="flex items-center justify-around h-16 px-1">
           {[
@@ -288,7 +199,6 @@ export function Sidebar() {
               badge: unreadCount,
             },
           ].map((item) => (
->>>>>>> recovery-branch
             <NavItem key={item.to} {...item} mobile />
           ))}
           {user && (
@@ -296,13 +206,8 @@ export function Sidebar() {
               to={`/profile/${user.userId}`}
               className={({ isActive }) =>
                 cn(
-<<<<<<< HEAD
-                  'flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl transition-all',
-                  isActive ? 'text-brand-400' : 'text-muted-foreground'
-=======
                   "flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl transition-all",
                   isActive ? "text-brand-400" : "text-muted-foreground",
->>>>>>> recovery-branch
                 )
               }
             >
@@ -314,8 +219,6 @@ export function Sidebar() {
               <span className="text-[10px] font-medium">Profile</span>
             </NavLink>
           )}
-<<<<<<< HEAD
-=======
           {isAdmin && (
             <NavLink
               to="/admin"
@@ -330,7 +233,6 @@ export function Sidebar() {
               <span className="text-[10px] font-medium">Admin</span>
             </NavLink>
           )}
->>>>>>> recovery-branch
         </div>
       </nav>
     </>
