@@ -6,11 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { postsApi, mediaApi } from "../../api";
 import type { Post, Visibility } from "../../types";
-<<<<<<< HEAD
 import { buildMediaUrl, cn } from "../../utils";
-=======
-import { cn } from "../../utils";
->>>>>>> recovery-branch
 
 interface CreatePostProps {
   onCreated: (post: Post) => void;
@@ -72,10 +68,7 @@ export function CreatePost({ onCreated }: CreatePostProps) {
     if (!content.trim()) return;
     setIsSubmitting(true);
     try {
-<<<<<<< HEAD
       // Upload media first
-=======
->>>>>>> recovery-branch
       const mediaUrls: string[] = [];
       if (mediaFiles.length > 0) {
         for (let i = 0; i < mediaFiles.length; i++) {
@@ -146,10 +139,7 @@ export function CreatePost({ onCreated }: CreatePostProps) {
               maxLength={maxChars}
             />
 
-<<<<<<< HEAD
             {/* Media previews */}
-=======
->>>>>>> recovery-branch
             {mediaPreviews.length > 0 && (
               <div
                 className={cn(
@@ -182,10 +172,7 @@ export function CreatePost({ onCreated }: CreatePostProps) {
         </div>
       </div>
 
-<<<<<<< HEAD
       {/* Upload progress */}
-=======
->>>>>>> recovery-branch
       {isSubmitting && uploadProgress > 0 && (
         <div className="px-4 pb-2">
           <div className="h-1 bg-surface rounded-full overflow-hidden">
@@ -197,17 +184,11 @@ export function CreatePost({ onCreated }: CreatePostProps) {
         </div>
       )}
 
-<<<<<<< HEAD
       {/* Footer controls */}
       {(focused || content || mediaPreviews.length > 0) && (
         <div className="flex items-center justify-between px-4 pb-4 pt-1 border-t border-border/40">
           <div className="flex items-center gap-1">
             {/* Media upload */}
-=======
-      {(focused || content || mediaPreviews.length > 0) && (
-        <div className="flex items-center justify-between px-4 pb-4 pt-1 border-t border-border/40">
-          <div className="flex items-center gap-1">
->>>>>>> recovery-branch
             <button
               onClick={() => fileRef.current?.click()}
               className="p-2 rounded-lg text-muted-foreground hover:text-brand-400 hover:bg-brand-500/10 transition-all"
@@ -223,11 +204,8 @@ export function CreatePost({ onCreated }: CreatePostProps) {
               onChange={handleFiles}
               className="hidden"
             />
-<<<<<<< HEAD
 
             {/* Visibility picker */}
-=======
->>>>>>> recovery-branch
             <div className="relative group">
               <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all">
                 {currentVisibility.icon}
@@ -253,10 +231,7 @@ export function CreatePost({ onCreated }: CreatePostProps) {
           </div>
 
           <div className="flex items-center gap-3">
-<<<<<<< HEAD
             {/* Character count */}
-=======
->>>>>>> recovery-branch
             {charCount > maxChars * 0.7 && (
               <span
                 className={cn(
