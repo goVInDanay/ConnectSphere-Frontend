@@ -28,7 +28,7 @@ import { adminApi, authApi } from "../../api";
 import type { User, Post, Comment, Report } from "../../types";
 import { timeAgo, formatCount, cn } from "../../utils";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// Types
 type AdminTab =
   | "overview"
   | "users"
@@ -37,7 +37,7 @@ type AdminTab =
   | "flagged"
   | "reports";
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
+// Stat card
 function StatCard({
   label,
   value,
@@ -73,7 +73,7 @@ function StatCard({
   );
 }
 
-// ── Status badge ──────────────────────────────────────────────────────────────
+// Status badge
 function StatusBadge({
   active,
   flagged,
@@ -102,7 +102,7 @@ function StatusBadge({
   );
 }
 
-// ── User row ──────────────────────────────────────────────────────────────────
+// User row
 function UserRow({
   user,
   onAction,
@@ -124,7 +124,7 @@ function UserRow({
           {user.fullName || user.username}
         </p>
         <p className="text-xs text-muted-foreground truncate">
-          @{user.username} · {user.email}
+          @{user.username} ·ṅ {user.email}
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -132,7 +132,6 @@ function UserRow({
           {user.role}
         </span>
         <StatusBadge active={user.active} flagged={user.flagged} />
-        {/* Actions dropdown */}
         <div className="relative">
           <button
             onClick={() => setOpen((o) => !o)}
@@ -215,7 +214,7 @@ function UserRow({
   );
 }
 
-// ── Post row ──────────────────────────────────────────────────────────────────
+// Post row
 function PostRow({
   post,
   onAction,
@@ -291,7 +290,7 @@ function PostRow({
   );
 }
 
-// ── Comment row ───────────────────────────────────────────────────────────────
+// Comment row
 function CommentRow({
   comment,
   onAction,
@@ -370,7 +369,7 @@ function CommentRow({
   );
 }
 
-// ── Report row ────────────────────────────────────────────────────────────────
+// Report row
 function ReportRow({
   report,
   onAction,
@@ -429,7 +428,7 @@ function ReportRow({
   );
 }
 
-// ── Section header ────────────────────────────────────────────────────────────
+// Section header
 function SectionHeader({
   title,
   count,
@@ -490,10 +489,8 @@ function SectionHeader({
   );
 }
 
-// ── AdminDashboard ────────────────────────────────────────────────────────────
+// AdminDashboard
 export default function AdminDashboard() {
-  // AdminRoute already guarantees this component only renders for confirmed admins.
-  // We only need the user object for display purposes, not for auth guarding.
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -515,7 +512,7 @@ export default function AdminDashboard() {
   const [postSearch, setPostSearch] = useState("");
   const [commentSearch, setCommentSearch] = useState("");
 
-  // ── Fetchers ────────────────────────────────────────────────────────────
+  // Fetchers
   const setLoad = (key: string, val: boolean) =>
     setLoading((p) => ({ ...p, [key]: val }));
 
@@ -598,7 +595,7 @@ export default function AdminDashboard() {
     if (activeTab === "reports") fetchReports();
   }, [activeTab]);
 
-  // ── Actions ──────────────────────────────────────────────────────────────
+  // Actions
   const handleAction = async (action: string, id: number) => {
     try {
       switch (action) {
@@ -710,7 +707,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // ── Filtered data ─────────────────────────────────────────────────────────
+  // Filtered data
   const filteredUsers = users.filter(
     (u) =>
       !userSearch ||
@@ -727,7 +724,7 @@ export default function AdminDashboard() {
       c.content.toLowerCase().includes(commentSearch.toLowerCase()),
   );
 
-  // ── Tabs ──────────────────────────────────────────────────────────────────
+  // Tabs
   const TABS: { id: AdminTab; label: string; icon: React.ElementType }[] = [
     { id: "overview", label: "Overview", icon: BarChart2 },
     { id: "users", label: "Users", icon: Users },
@@ -740,7 +737,6 @@ export default function AdminDashboard() {
   return (
     <AppLayout>
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        {/* Header */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-brand-500/10 flex items-center justify-center">
             <Shield className="w-5 h-5 text-brand-400" />
@@ -754,8 +750,6 @@ export default function AdminDashboard() {
             </p>
           </div>
         </div>
-
-        {/* Tab strip */}
         <div className="flex gap-1 overflow-x-auto pb-1">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
@@ -773,8 +767,6 @@ export default function AdminDashboard() {
             </button>
           ))}
         </div>
-
-        {/* ── Overview ── */}
         {activeTab === "overview" && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -836,8 +828,6 @@ export default function AdminDashboard() {
                 color="bg-destructive/10 text-destructive"
               />
             </div>
-
-            {/* Quick Recent Users */}
             {users.length > 0 && (
               <div className="bg-card border border-border rounded-2xl p-4">
                 <SectionHeader
@@ -857,8 +847,6 @@ export default function AdminDashboard() {
             )}
           </div>
         )}
-
-        {/* ── Users tab ── */}
         {activeTab === "users" && (
           <div className="bg-card border border-border rounded-2xl p-4">
             <SectionHeader
@@ -889,8 +877,6 @@ export default function AdminDashboard() {
             )}
           </div>
         )}
-
-        {/* ── Posts tab ── */}
         {activeTab === "posts" && (
           <div className="bg-card border border-border rounded-2xl p-4">
             <SectionHeader
@@ -921,8 +907,6 @@ export default function AdminDashboard() {
             )}
           </div>
         )}
-
-        {/* ── Comments tab ── */}
         {activeTab === "comments" && (
           <div className="bg-card border border-border rounded-2xl p-4">
             <SectionHeader
@@ -957,8 +941,6 @@ export default function AdminDashboard() {
             )}
           </div>
         )}
-
-        {/* ── Flagged tab ── */}
         {activeTab === "flagged" && (
           <div className="space-y-4">
             <div className="bg-card border border-border rounded-2xl p-4">
@@ -1038,8 +1020,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-
-        {/* ── Reports tab ── */}
         {activeTab === "reports" && (
           <div className="space-y-4">
             <div className="bg-card border border-border rounded-2xl p-4">

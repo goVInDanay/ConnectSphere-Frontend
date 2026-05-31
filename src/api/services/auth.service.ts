@@ -8,7 +8,6 @@ import type {
   User,
 } from '../../types';
 
-// All routes match AuthController mappings via API Gateway → auth-service
 // Gateway routes: /api/auth/** → http://auth-service:8081/api/auth/**
 
 export const authApi = {

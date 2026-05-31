@@ -149,8 +149,7 @@ export function Sidebar() {
             </>
           )}
         </nav>
-
-        {user && (
+        {user ? (
           <div className="p-3 border-t border-border space-y-1">
             <div className="px-1 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
@@ -183,6 +182,11 @@ export function Sidebar() {
               </button>
             </div>
           </div>
+        ) : (
+          <>
+            <NavItem to="/login" icon={User} label="Login" />
+            <NavItem to="/register" icon={User} label="Register" />
+          </>
         )}
       </aside>
 
@@ -201,7 +205,7 @@ export function Sidebar() {
           ].map((item) => (
             <NavItem key={item.to} {...item} mobile />
           ))}
-          {user && (
+          {user ? (
             <NavLink
               to={`/profile/${user.userId}`}
               className={({ isActive }) =>
@@ -218,6 +222,11 @@ export function Sidebar() {
               />
               <span className="text-[10px] font-medium">Profile</span>
             </NavLink>
+          ) : (
+            <>
+              <NavItem to="/login" icon={User} label="Login" mobile />
+              <NavItem to="/register" icon={User} label="Register" mobile />
+            </>
           )}
           {isAdmin && (
             <NavLink

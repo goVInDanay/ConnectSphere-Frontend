@@ -9,7 +9,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Smart date formatter
+// date formatter
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
   if (isToday(date)) {
@@ -21,7 +21,7 @@ export function formatDate(dateString: string): string {
   return format(date, 'MMM d, yyyy');
 }
 
-// Relative time (e.g. "2 hours ago")
+// Relative time
 export function timeAgo(dateString: string): string {
   return formatDistanceToNow(new Date(dateString), { addSuffix: true });
 }
@@ -79,7 +79,6 @@ export const REACTION_EMOJIS: Record<string, string> = {
 export function buildMediaUrl(url: string): string {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  // Relative paths served from /uploads/ by media service via gateway
   return `/uploads/${url}`;
 }
 

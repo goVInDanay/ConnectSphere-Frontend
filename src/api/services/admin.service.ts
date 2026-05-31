@@ -1,13 +1,13 @@
 import { apiClient } from '../client';
 import type { User, Post, Comment, Report } from '../../types';
 
-// Admin endpoints via API Gateway (all require ADMIN role):
 // /api/admin/users/**  → auth-service
 // /api/admin/posts/**  → post-service
 // /api/admin/comments/** → comment-service
 
 export const adminApi = {
-  // ─── User Management ────────────────────────────────────────────────────────
+
+  //User
 
   // GET /api/admin/users/users → List<User>
   getAllUsers: async (): Promise<User[]> => {
@@ -51,7 +51,7 @@ export const adminApi = {
     await apiClient.post(`/admin/users/users/${userId}/unflag`);
   },
 
-  // ─── User Reports ────────────────────────────────────────────────────────────
+  // User Reports
 
   // GET /api/admin/users/reports → List<Report>
   getUserReports: async (): Promise<Report[]> => {
@@ -69,7 +69,7 @@ export const adminApi = {
     await apiClient.put(`/admin/users/${reportId}/reject`);
   },
 
-  // ─── Post Management ─────────────────────────────────────────────────────────
+  // Post Management
 
   // GET /api/admin/posts → List<Post>
   getAllPosts: async (): Promise<Post[]> => {
@@ -114,7 +114,7 @@ export const adminApi = {
     await apiClient.put(`/admin/posts/reports/${reportId}/invalidate`);
   },
 
-  // ─── Comment Management ───────────────────────────────────────────────────────
+  // Comment Management
 
   // GET /api/admin/comments → List<Comment>
   getAllComments: async (): Promise<Comment[]> => {

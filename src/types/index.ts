@@ -1,4 +1,4 @@
-// ─── Auth Service DTOs ────────────────────────────────────────────────────────
+// Auth Service DTOs
 
 export interface RegisterRequest {
   username: string;
@@ -57,7 +57,7 @@ export interface User {
   updatedAt: string;
 }
 
-// ─── Post Service DTOs ────────────────────────────────────────────────────────
+// Post Service DTOs
 
 export type PostType = "TEXT" | "MEDIA" | "REEL" | "STORY";
 export type Visibility = "PUBLIC" | "FOLLOWERS" | "PRIVATE";
@@ -99,7 +99,7 @@ export interface Post {
   updatedAt: string;
 }
 
-// ─── Comment Service DTOs ─────────────────────────────────────────────────────
+// Comment Service DTOs
 
 export interface CreateCommentRequest {
   authorId: number;
@@ -124,7 +124,7 @@ export interface Comment {
   updatedAt: string;
 }
 
-// ─── Like Service DTOs ────────────────────────────────────────────────────────
+// Like Service DTOs
 
 export type TargetType = "POST" | "COMMENT";
 export type ReactionType = "LIKE" | "LOVE" | "HAHA" | "WOW" | "SAD" | "ANGRY";
@@ -149,7 +149,7 @@ export interface ReactionSummaryResponse {
   reactions: Record<ReactionType, number>;
 }
 
-// ─── Follow Service DTOs ──────────────────────────────────────────────────────
+// Follow Service DTOs
 
 export type FollowStatus = "ACTIVE" | "PENDING" | "BLOCKED";
 
@@ -161,7 +161,7 @@ export interface Follow {
   createdAt: string;
 }
 
-// ─── Media Service DTOs ───────────────────────────────────────────────────────
+// Media Service DTOs
 
 export type MediaType = "IMAGE" | "VIDEO";
 
@@ -191,7 +191,7 @@ export interface Story {
   activeStatus: boolean;
 }
 
-// ─── Search Service DTOs ──────────────────────────────────────────────────────
+// Search Service DTOs
 
 export interface Hashtag {
   hashtagId: number;
@@ -200,7 +200,7 @@ export interface Hashtag {
   lastUsedAt: string | null;
 }
 
-// ─── Notification Service DTOs ────────────────────────────────────────────────
+// Notification Service DTOs
 
 export type NotificationType =
   | "LIKE"
@@ -224,7 +224,7 @@ export interface Notification {
   createdAt: string;
 }
 
-// ─── Admin DTOs ───────────────────────────────────────────────────────────────
+// Admin DTOs
 
 export type ReportStatus = "PENDING" | "RESOLVED" | "REJECTED";
 export type ReportType = "POST" | "COMMENT" | "USER";
@@ -240,7 +240,7 @@ export interface Report {
   createdAt?: string;
 }
 
-// ─── UI-only helpers ──────────────────────────────────────────────────────────
+// UI-only helpers
 
 export interface ToastMessage {
   id: string;

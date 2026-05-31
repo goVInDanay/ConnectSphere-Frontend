@@ -60,4 +60,10 @@ export const postsApi = {
     const res = await apiClient.put<Post>(`/posts/${postId}/visibility`, data);
     return res.data;
   },
+
+  // GET /api/posts/{userId}/posts -> Posts[]
+  getProfilePosts: async(userId: number) : Promise<Post[]> => {
+    const res = await apiClient.get<Post[]>(`/posts/profile/${userId}/posts`);
+    return res.data;
+  }
 };

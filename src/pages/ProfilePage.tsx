@@ -227,7 +227,8 @@ export default function ProfilePage() {
     if (!userId) return;
     setLoadingPosts(true);
     try {
-      const data = await postsApi.getPostsByUser(userId);
+      const data = await postsApi.getProfilePosts(userId);
+      console.log(data);
       setPosts(data);
     } catch {
       setPosts([]);

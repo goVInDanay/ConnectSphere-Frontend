@@ -243,10 +243,13 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
       {/* Actions */}
       <div className="flex items-center gap-1 px-4 pb-3 pt-1 border-t border-border/40">
         {/* Like with reaction picker */}
-        <div className="relative">
+        {/* Like with reaction picker */}
+        <div
+          className="relative"
+          onMouseEnter={() => setShowReactionPicker(true)}
+          onMouseLeave={() => setShowReactionPicker(false)}
+        >
           <button
-            onMouseEnter={() => setShowReactionPicker(true)}
-            onMouseLeave={() => setShowReactionPicker(false)}
             onClick={handleQuickLike}
             className={cn(
               "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all",
@@ -265,26 +268,24 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
             <span>{formatCount(likeCount)}</span>
           </button>
 
-          {/* Reaction picker popup */}
+          {/* Reaction picker — pb-1 bridges the gap so mouse never leaves the wrapper */}
           {showReactionPicker && (
-            <div
-              className="absolute bottom-full left-0 mb-2 flex items-center gap-1 p-2 glass border border-border rounded-2xl shadow-card z-30 reaction-popup"
-              onMouseEnter={() => setShowReactionPicker(true)}
-              onMouseLeave={() => setShowReactionPicker(false)}
-            >
-              {REACTIONS.map((r) => (
-                <button
-                  key={r.type}
-                  onClick={() => handleReact(r.type)}
-                  className={cn(
-                    "text-xl transition-all duration-150 hover:scale-125 p-1 rounded-lg",
-                    userReaction === r.type && "scale-110 bg-surface-hover",
-                  )}
-                  title={r.type}
-                >
-                  {r.emoji}
-                </button>
-              ))}
+            <div className="absolute bottom-full left-0 pb-1 z-30">
+              <div className="flex items-center gap-1 p-2 glass border border-border rounded-2xl shadow-card reaction-popup">
+                {REACTIONS.map((r) => (
+                  <button
+                    key={r.type}
+                    onClick={() => handleReact(r.type)}
+                    className={cn(
+                      "text-xl transition-all duration-150 hover:scale-125 p-1 rounded-lg",
+                      userReaction === r.type && "scale-110 bg-surface-hover",
+                    )}
+                    title={r.type}
+                  >
+                    {r.emoji}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

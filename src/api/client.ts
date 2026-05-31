@@ -1,11 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-// ── Token storage — sessionStorage ────────────────────────────────────────────
-// sessionStorage survives page refreshes within the same tab but is cleared
-// when the tab closes. This means:
-//   • Refresh (F5) → token still available → followers-only posts load correctly
-//   • Tab close / new tab → token gone → user must re-authenticate (secure)
-//   • Unlike a cookie we control exactly when it is sent
 const TOKEN_KEY = "cs_token_v1";
 
 let _isRefreshing = false;
@@ -19,15 +13,11 @@ export const tokenStore = {
 
 export const apiClient = axios.create({
   baseURL: "/api",
-  withCredentials: true, // sends cs_refresh_token cookie automatically
+  withCredentials: true,
   headers: { "Content-Type": "application/json" },
   timeout: 15_000,
 });
 
-// ── Request interceptor: attach Bearer token ──────────────────────────────────
-// ── Notification client ──────────────────────────────────────────────────────
-// No explicit gateway route for /api/notifications/** — reached via Eureka
-// discovery locator at /notification-service/api/notifications/**
 export const notificationClient = axios.create({
   baseURL: "/notification-service/api",
   withCredentials: true,
@@ -35,7 +25,6 @@ export const notificationClient = axios.create({
   timeout: 15_000,
 });
 
-// Add Bearer token to the notification client too
 notificationClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = tokenStore.get();
@@ -52,7 +41,6 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// ── Response interceptor: 401 → silent refresh → retry ───────────────────────
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -64,7 +52,6 @@ apiClient.interceptors.response.use(
       original._retry = true;
 
       if (_isRefreshing) {
-        // Queue concurrent requests while a refresh is already in-flight
         return new Promise((resolve, reject) => {
           _refreshQueue.push((token) => {
             if (token) {

@@ -10,7 +10,7 @@ import { useToast } from '../context/ToastContext';
 import type { Notification, NotificationType } from '../types';
 import { timeAgo, cn } from '../utils';
 
-// ── Type badge ────────────────────────────────────────────────────────────────
+// Type badge
 const TYPE_CONFIG: Record<string, { color: string; label: string; emoji: string }> = {
   LIKE:           { color: 'bg-rose-500/10 text-rose-400 border-rose-500/20',    label: 'Like',    emoji: '❤️' },
   COMMENT:        { color: 'bg-blue-500/10 text-blue-400 border-blue-500/20',    label: 'Comment', emoji: '💬' },
@@ -58,20 +58,15 @@ function NotificationCard({
       )}
       onClick={handleClick}
     >
-      {/* Unread indicator */}
       {!notif.readStatus && (
         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-brand-500" />
       )}
-
-      {/* Icon */}
       <div className={cn(
         'w-10 h-10 rounded-xl border flex items-center justify-center text-lg shrink-0',
         config.color
       )}>
         {config.emoji}
       </div>
-
-      {/* Content */}
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-start justify-between gap-2">
           <p className={cn(
@@ -92,7 +87,6 @@ function NotificationCard({
         </p>
       </div>
 
-      {/* Action buttons */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-start mt-0.5">
         {!notif.readStatus && (
           <button
@@ -115,7 +109,7 @@ function NotificationCard({
   );
 }
 
-// ── Filter tabs ───────────────────────────────────────────────────────────────
+// Filter tabs
 const FILTERS = ['All', 'Unread', 'LIKE', 'COMMENT', 'FOLLOW', 'MENTION', 'ACCOUNT_ACTION'];
 
 export default function NotificationsPage() {
@@ -209,7 +203,6 @@ export default function NotificationsPage() {
           ))}
         </div>
 
-        {/* List */}
         {loading && notifications.length === 0 ? (
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
